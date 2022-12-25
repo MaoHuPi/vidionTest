@@ -12,8 +12,7 @@ import os
 DES = '''Developed by MaoHuPi
 Copyright: 2022 © MaoHuPi
 App Name: Vidion Test
-Verstion: 1.0.0
-'''
+Verstion: 1.0.0'''
 
 
 path = '.' if os.path.isfile(
@@ -66,6 +65,7 @@ def rectRelativePos(rect=(0, 0, 10, 10), p=(5, 5)):
             y = p[1]
     return ([(p.x - rect.x)/rect.w, (p.y - rect.y)/rect.h])
 
+
 def inputFile():
     win_tk = tkinter.Tk()
     win_tk.withdraw()
@@ -91,7 +91,7 @@ def main():
     langJson = langFile.read()
     langFile.close()
     _langData = {}
-    _langNow = ''
+    _langNow = 'zh'
     try:
         _langData = json.loads(langJson)
     except:
@@ -106,7 +106,7 @@ def main():
     global settingsDict, settingsKeyImage, settingsValueBtn
 
     class settingValue:
-        def __init__(self, default, type, step = 1, range = [1, 10]):
+        def __init__(self, default, type, step=1, range=[1, 10]):
             self.value = default
             self.type = type
             self.step = step
@@ -117,7 +117,7 @@ def main():
 
     global _eImagePathNow
     _eImagePathNow = rf'{path}/image/eImage.png'
-    
+
     settingsDict = {
         "capIndex": settingValue(0, int, step=1, range=[0, 100]),
         "themeColor": settingValue(0, color),
@@ -125,10 +125,6 @@ def main():
         "eImagePath": settingValue(_eImagePathNow, 'path')
     }
     settingsDict['themeColor'].value = color.theme
-
-    # about labels
-    global aboutLabelImage
-    aboutLabelImage = [False for _ in range(len(DES.split('\n')))]
 
     # pygame init
     pygame.init()
@@ -178,6 +174,37 @@ def main():
         else:
             image = font.render(text, False, fgc)
         return (image)
+
+    def rectTextsImage(text, spaceW, spaceH, bold=False, fgc=color.BLACK, bgc=False, fontName='arial', isSysFont=True, debug=False):
+        RTImage = pygame.Surface(
+            (spaceW, spaceH), pygame.SRCALPHA).convert_alpha()
+        if type(text) == str:
+            text = text.split('\n')
+        textImageList = [*text]
+        lineHeight = spaceH/len(textImageList)
+        imageSizeMax = 0
+        for i in range(len(textImageList)):
+            textImageList[i] = image = textImage(
+                textImageList[i], size=lineHeight - winOW*0.01, bold=bold, fgc=fgc, bgc=bgc, fontName=fontName, isSysFont=isSysFont)
+            imageWidth = image.get_size()[0]
+            imageSizeMax = imageWidth if imageWidth > imageSizeMax else imageSizeMax
+        if imageSizeMax > spaceW:
+            lineHeight = (lineHeight*spaceW/imageSizeMax)
+            for i in range(len(textImageList)):
+                image = textImageList[i]
+                imageSize = image.get_size()
+                textImageList[i] = pygame.transform.scale(image, (int(
+                    imageSize[0]/imageSizeMax*spaceW), int(imageSize[1]/imageSizeMax*spaceW)))
+        for i, image in enumerate(textImageList):
+            drawImage(RTImage, image, position=(
+                0, lineHeight*(i+0.5)), origin='lc')
+            if debug:
+                pygame.draw.rect(
+                    RTImage, color.RED, pygame.Rect(0, lineHeight*(i), *image.get_size()), 2)
+        if debug:
+            pygame.draw.rect(
+                RTImage, color.BLUE, pygame.Rect(0, 0, *(int(spaceW), int(spaceH))), 2)
+        return (RTImage)
 
     def setAlpha(image, alpha=100):
         # surface = pygame.Surface(image.get_size(), pygame.SRCALPHA).convert_alpha()
@@ -284,7 +311,7 @@ def main():
 
     # scenes variables
     global scenesNow, scenesNext, transitionMax, transitionTime, transitionMode
-    scenesNow = 0  # 0: home, 1: test, 2: settings, 3: about
+    scenesNow = 0  # 0: home, 1: test, 2: settings, 3: about, 4: score
     scenesNext = 0
     transitionMax = 0.5
     transitionTime = transitionMax
@@ -309,6 +336,7 @@ def main():
     global homeTitle, homeTitlePos
 
     # test variables
+    global testMode
     global testBoxRect
     global testBar, testBarRect
     global testImagePos
@@ -329,19 +357,22 @@ def main():
     userFlip = True
     testImageScale = 1
 
-    def scaleTestImage(correct = True):
+    def scaleTestImage(correct=True):
         global testImageScale
         if correct:
             testImageScale *= settingsDict['scaleRatePerTimes'].value
         else:
-            testImageScale = max(testImageScale / settingsDict['scaleRatePerTimes'].value, testImageScale)
+            testImageScale = max(
+                testImageScale / settingsDict['scaleRatePerTimes'].value, testImageScale)
 
     userScore = {
-        'testNum': 0, 
-        'level': 0, 
-        'score': 0, 
+        'testNum': 0,
+        'level': 0,
+        'score': 0,
         'time': 0
     }
+    userNotCorrectNum = 0
+    userNotCorrectMax = 3
 
     # settings variables
     global colorMapVisible, colorMapImage, colorMapSize, colorMapArray
@@ -349,6 +380,21 @@ def main():
     colorMapImage = pygame.image.load(rf'{path}/image/colorMap.png')
     colorMapSize = colorMapImage.get_size()
     colorMapArray = pg2cv(colorMapImage, False)
+
+    def renderScoreScenes():
+        global win_score
+        win_score = pygame.Surface(
+            (winW, winH), pygame.SRCALPHA).convert_alpha()
+        win_score.fill((*color.WHITE, 0))
+
+        userScoreTextList = [[key, '%.2f' % (userScore[key]) if type(
+            userScore[key]) == float else userScore[key]] for key in userScore]
+        userScoreTextList = [
+            f'{kvPair[0]}: {kvPair[1]}' for kvPair in userScoreTextList]
+        RTImage = rectTextsImage(
+            userScoreTextList, winW - settingsBar.w - winOW*0.02*2, (winH-winOW*(0.02*2)))
+        drawImage(win_score, RTImage, position=(
+            settingsBar.w + winOW*0.02, winOW*0.02), origin='lt')
 
     def surfaceResize():
         global btnMouseOver, btnMouseLeave
@@ -394,10 +440,13 @@ def main():
                 global scenesNow
                 changeScenes(i+1)
                 if i == 0:
-                    global testImageScale, userScore
+                    global testMode, testImageScale, userScore, userNotCorrectNum
+                    testMode = 0
                     testImageScale = 1
-                    for key in userScore: userScore[key] = 0
+                    for key in userScore:
+                        userScore[key] = 0
                     userScore['level'] = 1
+                    userNotCorrectNum = 0
         # test
         global testBoxRect
         testBoxRect = [0, 0, winW, (winH - (winOW*0.02)*2)*0.7 + winOW*0.02]
@@ -489,20 +538,24 @@ def main():
                         mousePos = pygame.mouse.get_pos()
                         innerPos = rectRelativePos(
                             [self.x, self.y, self.w, self.h], mousePos)
-                        changeRate = (int(valueStep) if type == int else valueStep)*(1 if innerPos[1] < 0.5 else -1)
+                        changeRate = (
+                            int(valueStep) if type == int else valueStep)*(1 if innerPos[1] < 0.5 else -1)
                         nextValue = settingsDict[key].value + changeRate
                         maxValue = max(*valueRange)
                         minValue = min(*valueRange)
-                        if nextValue > maxValue: nextValue = maxValue
-                        elif nextValue < minValue: nextValue = minValue
+                        if nextValue > maxValue:
+                            nextValue = maxValue
+                        elif nextValue < minValue:
+                            nextValue = minValue
                         settingsDict[key].value = nextValue
                         if type == float:
                             splitedNum = str(valueStep).split('.')
                             if len(splitedNum) == 2:
                                 floatDepth = len(splitedNum[1])
                                 if floatDepth > 0:
-                                    
-                                    settingsDict[key].value = float(round(settingsDict[key].value, floatDepth))
+
+                                    settingsDict[key].value = float(
+                                        round(settingsDict[key].value, floatDepth))
                 elif settingsDict[key].type == 'path':
                     @SVBtn.setMouseClick
                     def bmc(self, key=key, *args):
@@ -511,11 +564,18 @@ def main():
                         settingsDict[key].value = filePath
 
         # about
-        global aboutLabelImage
-        aboutLabel = DES.split('\n')
-        for i in range(len(aboutLabel)):
-            aboutLabelImage[i] = textImage(
-                aboutLabel[i], size=winOW*0.06, fgc=color.BLACK, bgc=False)
+        global win_about
+        win_about = pygame.Surface(
+            (winW, winH), pygame.SRCALPHA).convert_alpha()
+        win_about.fill((*color.WHITE, 0))
+        RTImage = rectTextsImage(
+            DES.split('\n'), winW - settingsBar.w - winOW*0.02*2, (winH-winOW*(0.02*2)))
+        drawImage(win_about, RTImage, position=(
+            settingsBar.w + winOW*0.02, winOW*0.02), origin='lt')
+
+        # about
+        renderScoreScenes()
+
     surfaceResize()
 
     # window loop
@@ -610,16 +670,24 @@ def main():
                     userDwellTime = 0
                     testAniTime = 0
                     userAnswerIsCorrect = testAnswer == userAnswer
+                    if not userAnswerIsCorrect:
+                        userNotCorrectNum += 1
                     testMode = 2
             elif testMode == 2:
                 testAniTime += 1/fps
                 if testAniTime >= testAniLen:
+                    if userNotCorrectNum >= userNotCorrectMax:
+                        renderScoreScenes()
+                        changeScenes(4)
+                        userNotCorrectNum = 0
                     scaleTestImage(userAnswerIsCorrect)
                     if userAnswerIsCorrect:
                         userScore['level'] /= settingsDict['scaleRatePerTimes'].value
                     else:
-                        userScore['level'] = min(userScore['level'] * settingsDict['scaleRatePerTimes'].value, userScore['level'])
-                    userScore['score'] = userScore['testNum']*userScore['level']
+                        userScore['level'] = min(
+                            userScore['level'] * settingsDict['scaleRatePerTimes'].value, userScore['level'])
+                    userScore['score'] = userScore['testNum'] * \
+                        userScore['level']
                     testMode = 0
 
             # test box
@@ -656,12 +724,14 @@ def main():
             # test bar
             win_alpha.fill((*color.WHITE, 0))
             testBar.draw(win_alpha)
-            i = 0
             lineHeight = (testBarRect[3]-winOW*(0.02*2))/len(userScore.keys())
-            for key in userScore:
-                valueText = '%.2f'%(userScore[key]) if type(userScore[key]) == float else userScore[key]
-                USTImage = textImage(f'{key}: {valueText}', size=lineHeight-winOW*0.01, fgc=color.theme)
-                drawImage(win_alpha, USTImage, position=(testBarRect[0] + winOW*(0.02*2+0.1), testBarRect[1] + winOW*(0.02) + lineHeight*(i+0.5)), origin='lc')
+            for i, key in enumerate(userScore):
+                valueText = '%.2f' % (userScore[key]) if type(
+                    userScore[key]) == float else userScore[key]
+                USTImage = textImage(
+                    f'{langData(key)}: {valueText}', size=lineHeight-winOW*0.01, fgc=color.theme)
+                drawImage(win_alpha, USTImage, position=(testBarRect[0] + winOW*(
+                    0.02*2+0.1), testBarRect[1] + winOW*(0.02) + lineHeight*(i+0.5)), origin='lc')
                 i += 1
 
             camImage = cv2pg(img)
@@ -736,11 +806,27 @@ def main():
         elif scenesNow == 3:
             win.fill(color.WHITE)
 
+            global win_about
+            win.blit(win_about, (0, 0))
+
             win_alpha.fill((*color.WHITE, 0))
-            for i, image in enumerate(aboutLabelImage):
-                drawImage(win_alpha, image, (winOW*(0.1 + 0.02*3),
-                          winOW*(i*0.07 + 0.06/2 + 0.02)), origin='lc')
+            settingsBar.draw(win_alpha)
+            backBtn.mouseMove(*mousePos)
+            backBtn.draw(win_alpha)
             win.blit(win_alpha, (0, 0))
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    run = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    backBtn.mouseClick()
+        elif scenesNow == 4:
+            win.fill(color.WHITE)
+
+            testImageBg = setAlpha(testImage, 100)
+            drawImage(win, testImageBg, position=(winW*3/4, winH*3/4), resize = [min(winW, winH) - winOW*0.02*2 for _ in range(2)], rotation=time.time()*360/5%360, origin='c')
+
+            win.blit(win_score, (0, 0))
 
             win_alpha.fill((*color.WHITE, 0))
             settingsBar.draw(win_alpha)
