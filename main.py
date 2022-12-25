@@ -596,10 +596,12 @@ def main():
         # score
         renderScoreScenes()
         global saveBtn
+        saveBtnTextImage = textImage(langData('saveImage'), size=winOW*0.06, fgc=color.theme, bgc=False)
+        saveBtnTextImageWidth = saveBtnTextImage.get_size()[0]
         saveBtn = button(
-            winW - winOW*(0.02 + 0.3), winH - winOW*(0.02 + 0.1), winOW*0.3, winOW*0.1,
+            winW - winOW*0.02 - (saveBtnTextImageWidth + winOW*0.02*2), winH - winOW*(0.02 + 0.1), saveBtnTextImageWidth + winOW*0.02*2, winOW*0.1,
             fillColor=False, strokeColor=[*color.theme, 255], lineWidth=winOW*0.008,
-            textImage=textImage(langData('saveImage'), size=winOW*0.06, fgc=color.theme, bgc=False), 
+            textImage=saveBtnTextImage, 
             mouseOver=btnMouseOver, mouseLeave=btnMouseLeave
         )
         # global scenesNow #
