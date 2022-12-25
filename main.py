@@ -9,10 +9,13 @@ import json
 import time
 import math
 import os
-DES = '''Developed by MaoHuPi
+import hashlib
+DES = '''
+Developed by MaoHuPi
 Copyright: 2022 © MaoHuPi
 App Name: Vidion Test
-Verstion: 1.0.0'''
+Verstion: 1.0.0
+'''
 
 
 path = '.' if os.path.isfile(
@@ -111,7 +114,7 @@ def main():
             self.type = type
             self.step = step
             self.range = range
-            if type not in [int, float]:
+            if type not in [int, float, list]:
                 self.step = False
                 self.range = False
 
@@ -122,6 +125,7 @@ def main():
         "capIndex": settingValue(0, int, step=1, range=[0, 100]),
         "themeColor": settingValue(0, color),
         "scaleRatePerTimes": settingValue(1, float, step=0.1, range=[0, 1.5]),
+        "language": settingValue(0, list, step=1, range=list(_langData.keys())), 
         "eImagePath": settingValue(_eImagePathNow, 'path')
     }
     settingsDict['themeColor'].value = color.theme
@@ -170,9 +174,9 @@ def main():
         font = (pygame.font.SysFont if isSysFont else pygame.font.Font)(
             fontName, size, bold=bold)
         if bgc:
-            image = font.render(text, False, fgc, bgc)
+            image = font.render(text, True, fgc, bgc)
         else:
-            image = font.render(text, False, fgc)
+            image = font.render(text, True, fgc)
         return (image)
 
     def rectTextsImage(text, spaceW, spaceH, bold=False, fgc=color.BLACK, bgc=False, fontName='arial', isSysFont=True, debug=False):
@@ -371,6 +375,12 @@ def main():
         'score': 0,
         'time': 0
     }
+    def generateUserScoreTextList():
+        userScoreTextList = [[key, '%.2f' % (userScore[key]) if type(
+            userScore[key]) == float else userScore[key]] for key in userScore]
+        userScoreTextList = [
+            f'{langData(kvPair[0])}: {kvPair[1]}' for kvPair in userScoreTextList]
+        return(userScoreTextList)
     userNotCorrectNum = 0
     userNotCorrectMax = 3
 
@@ -381,18 +391,16 @@ def main():
     colorMapSize = colorMapImage.get_size()
     colorMapArray = pg2cv(colorMapImage, False)
 
+    # score variable
+    global saveBtn
     def renderScoreScenes():
         global win_score
         win_score = pygame.Surface(
             (winW, winH), pygame.SRCALPHA).convert_alpha()
         win_score.fill((*color.WHITE, 0))
 
-        userScoreTextList = [[key, '%.2f' % (userScore[key]) if type(
-            userScore[key]) == float else userScore[key]] for key in userScore]
-        userScoreTextList = [
-            f'{kvPair[0]}: {kvPair[1]}' for kvPair in userScoreTextList]
         RTImage = rectTextsImage(
-            userScoreTextList, winW - settingsBar.w - winOW*0.02*2, (winH-winOW*(0.02*2)))
+            generateUserScoreTextList(), winW - settingsBar.w - winOW*0.02*2, (winH-winOW*(0.02*2)))
         drawImage(win_score, RTImage, position=(
             settingsBar.w + winOW*0.02, winOW*0.02), origin='lt')
 
@@ -562,19 +570,71 @@ def main():
                         global settingsDict
                         filePath = inputFile()
                         settingsDict[key].value = filePath
+                elif settingsDict[key].type == list:
+                    @SVBtn.setMouseClick
+                    def bmc(self, key=key, valueRange=settingsDict[key].range, valueStep=settingsDict[key].step, *args):
+                        global settingsDict
+                        settingsDict[key].value += valueStep
+                        valueRangeLen = len(valueRange)
+                        if settingsDict[key].value > valueRangeLen-1:
+                            settingsDict[key].value = 0
+                        elif settingsDict[key].value < 0:
+                            settingsDict[key].value = valueRangeLen-1
 
         # about
         global win_about
         win_about = pygame.Surface(
             (winW, winH), pygame.SRCALPHA).convert_alpha()
         win_about.fill((*color.WHITE, 0))
+        def ljf(row): row = row.split(':'); return(':'.join([langData(row[0]), *row[1:]]))
+        aboutTexts = [ljf(row) for row in DES.split('\n') if len(row) > 0]
         RTImage = rectTextsImage(
-            DES.split('\n'), winW - settingsBar.w - winOW*0.02*2, (winH-winOW*(0.02*2)))
+            aboutTexts, winW - settingsBar.w - winOW*0.02*2, (winH-winOW*(0.02*2)))
         drawImage(win_about, RTImage, position=(
             settingsBar.w + winOW*0.02, winOW*0.02), origin='lt')
 
-        # about
+        # score
         renderScoreScenes()
+        global saveBtn
+        saveBtn = button(
+            winW - winOW*(0.02 + 0.3), winH - winOW*(0.02 + 0.1), winOW*0.3, winOW*0.1,
+            fillColor=False, strokeColor=[*color.theme, 255], lineWidth=winOW*0.008,
+            textImage=textImage(langData('saveImage'), size=winOW*0.06, fgc=color.theme, bgc=False), 
+            mouseOver=btnMouseOver, mouseLeave=btnMouseLeave
+        )
+        # global scenesNow #
+        # scenesNow = 4 #
+        @saveBtn.setMouseClick
+        def bmc(*args):
+            SIW, SIH = 1920, 1080
+            SImage = pygame.Surface((SIW, SIH), pygame.SRCALPHA).convert_alpha()
+            SImage_alpha = pygame.Surface((SIW, SIH), pygame.SRCALPHA).convert_alpha()
+            SImage.fill(color.theme)
+
+            image = pygame.Surface((SIW-SIW*0.02*2, SIH-SIW*0.02*2), pygame.SRCALPHA).convert_alpha()
+            drawImage(image, testImage, position=(SIW/4, SIH*3/4), resize=[SIW/2 for _ in range(2)], rotation=-45, origin='c')
+            drawImage(SImage, image, position=(SIW*0.02, SIW*0.02))
+            
+            SImage_alpha.fill((*color.BLACK, 0))
+            pygame.draw.rect(
+                SImage_alpha,
+                (*color.WHITE, 200),
+                pygame.Rect(SIW*0.02, SIW*0.02, SIW-SIW*0.02*2, SIH-SIW*0.02*2)
+            )
+            SImage.blit(SImage_alpha, (0, 0))
+
+            userScoreTextList = generateUserScoreTextList()
+            userScoreTextList.append('%s: %s'%(langData('date'), time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
+            md5Obj = hashlib.md5()
+            md5Obj.update(json.dumps(userScoreTextList).encode('utf-8'))
+            userScoreTextList.append('%s: %s'%(langData('id'), md5Obj.hexdigest()[:16]))
+            image = rectTextsImage(userScoreTextList, SIW*(1 - 0.02*4)/2, SIH-SIW*0.02*4, fgc=color.BLACK)
+            drawImage(SImage, image, position=(SIW*(0.02*2 + (1 - 0.02*4)/2), SIW*0.02*2))
+
+            image = textImage('Vidion Test', size=SIW*0.06, fgc=color.BLACK)
+            drawImage(SImage, image, position=(SIW*(0.02*2 + (1 - 0.02*4)/4), SIW*0.02*2), origin='ct')
+
+            pygame.image.save(SImage, f'./{int(time.time())}.png')
 
     surfaceResize()
 
@@ -585,6 +645,10 @@ def main():
         current_time = time.time()
         fps = 1/(current_time-previous_time)
         previous_time = current_time
+
+        if _langNow != settingsDict['language'].range[settingsDict['language'].value]:
+            _langNow = settingsDict['language'].range[settingsDict['language'].value]
+            surfaceResize()
 
         # cap read
         if capIndexNow != settingsDict['capIndex'].value:
@@ -764,6 +828,8 @@ def main():
                     valueText = value.value
                     if value.type == 'path':
                         valueText = valueText.replace('\\', '').split('/')[-1]
+                    elif value.type == list:
+                        valueText = value.range[value.value]
                     valueImage = textImage(
                         str(valueText), size=winOW*0.06, fgc=color.BLACK, bgc=False)
                     SVBtn.textImage = valueImage
@@ -793,8 +859,8 @@ def main():
                     run = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if colorMapVisible:
-                        pointedColor = list(colorMapArray[int(
-                            mousePos[1]/winH*colorMapSize[1])][int(mousePos[0]/winW*colorMapSize[0])])
+                        pointedColor = colorMapArray[int(
+                            mousePos[1]/winH*colorMapSize[1])][int(mousePos[0]/winW*colorMapSize[0])].tolist()
                         settingsDict['themeColor'].value = pointedColor
                         color.theme = pointedColor
                         surfaceResize()
@@ -830,6 +896,8 @@ def main():
 
             win_alpha.fill((*color.WHITE, 0))
             settingsBar.draw(win_alpha)
+            saveBtn.mouseMove(*mousePos)
+            saveBtn.draw(win_alpha)
             backBtn.mouseMove(*mousePos)
             backBtn.draw(win_alpha)
             win.blit(win_alpha, (0, 0))
@@ -839,6 +907,7 @@ def main():
                     run = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     backBtn.mouseClick()
+                    saveBtn.mouseClick()
         else:
             changeScenes(0)
 

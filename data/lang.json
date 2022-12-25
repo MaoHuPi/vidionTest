@@ -8,7 +8,19 @@
         "capIndex": "Capture Index", 
         "themeColor": "Theme Color", 
         "scaleRatePerTimes": "Scale Rate Per Times", 
-        "eImagePath": "Test Image"
+        "eImagePath": "Test Image", 
+        "testNum": "Test Num", 
+        "level": "Level", 
+        "score": "Score", 
+        "time": "Time", 
+        "Developed by MaoHuPi": "Score", 
+        "App Name": "Test Num", 
+        "Verstion": "Level", 
+        "Copyright": "Time", 
+        "saveImage": "Save Image", 
+        "id": "ID", 
+        "date": "Date", 
+        "language": "Language"
     }, 
     "zh": {
         "_font": ["file", "{path}/font/GenJyuuGothic/GenJyuuGothic-{mode}.ttf", 1], 
@@ -16,9 +28,21 @@
         "settings": "設置", 
         "about": "關於", 
         "exit": "退出", 
-        "capId": "鏡頭索引", 
+        "capIndex": "鏡頭索引", 
         "themeColor": "色彩主題", 
         "scaleRatePerTimes": "逐次縮放", 
-        "eImagePath": "測驗圖片"
+        "eImagePath": "測驗圖片", 
+        "testNum": "題數", 
+        "level": "等級", 
+        "score": "分數", 
+        "time": "耗時", 
+        "Developed by MaoHuPi": "由 貓虎皮 開發", 
+        "App Name": "名稱", 
+        "Verstion": "版本", 
+        "Copyright": "版權", 
+        "saveImage": "保存圖片", 
+        "id": "編號", 
+        "date": "日期", 
+        "language": "語言"
     }
 }
