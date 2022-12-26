@@ -140,6 +140,7 @@ def main():
     def drawImage(surface, image, position, resize=False, rotation=False, origin='lt'):
         position = list(position)
         size = image.get_size()
+        image = image.convert_alpha()
         if resize != False:
             resize = [int(n) for n in resize]
             image = pygame.transform.scale(image, resize)
